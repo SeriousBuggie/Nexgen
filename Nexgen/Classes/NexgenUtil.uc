@@ -72,6 +72,8 @@ static function string replace(coerce string source, coerce string oldStr, coerc
 	local int subStrIndex;
 	local string result;
 	local string strLeft;
+
+	if(oldStr == "") return source;
 	
 	strLeft = source;
 	
@@ -1127,7 +1129,7 @@ static function string formatCmdArg(coerce string arg) {
 	
 	// Escape argument if necessary.
 	if (arg == "") {
-		arg = "\"\"";
+		result = "\"\"";
 	} else {
 		result = arg;
 		result = class'NexgenUtil'.static.replace(result, "\\", "\\\\");
@@ -1250,6 +1252,6 @@ defaultproperties {
 	version=1.12
 	versionCode=112
 	internalVersion=1154
-	packageName="Nexgen112"
+	packageName="Nexgen113"
 	countryFlagsPkg="CountryFlags2"
 }

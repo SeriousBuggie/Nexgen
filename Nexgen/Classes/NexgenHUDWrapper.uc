@@ -153,6 +153,7 @@ simulated function copyVarsToOriginalHUD() {
 	originalHUD.crosshairColor   = CrosshairColor;
 	originalHUD.hudMutator       = hudMutator;
 	originalHUD.bForceScores     = bForceScores;
+	originalHUD.bShowInfo        = bShowInfo;
 }
 
 
