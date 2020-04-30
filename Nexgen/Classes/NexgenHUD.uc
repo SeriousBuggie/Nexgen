@@ -773,6 +773,9 @@ simulated function setup(Canvas c) {
 	} else {
 		baseHUDColor = baseColors[5];
 	}
+  
+	// Fix offset 
+	C.bCenter = false;
 	
 	// Prevent redundant setups.
 	if (lastSetupTime == level.timeSeconds) {
@@ -854,6 +857,8 @@ simulated function preRenderHUD(Canvas c) {
  **************************************************************************************************/
 simulated function postRenderHUD(Canvas c) {
 	local int index;
+  
+	setup(c);
 	
 	// Render the message box.
 	if (client.bUseNexgenMessageHUD) {
