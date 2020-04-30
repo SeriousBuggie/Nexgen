@@ -72,8 +72,8 @@ static function string replace(coerce string source, coerce string oldStr, coerc
 	local int subStrIndex;
 	local string result;
 	local string strLeft;
-
-	if(oldStr == "") return source;
+  
+  if(oldStr == "") return source;
 	
 	strLeft = source;
 	
@@ -1249,8 +1249,8 @@ static function string getObjectClassName(Object o) {
  *
  **************************************************************************************************/
 defaultproperties {
-	version=1.12
-	versionCode=112
+	version=1.13
+	versionCode=113
 	internalVersion=1154
 	packageName="Nexgen113"
 	countryFlagsPkg="CountryFlags2"

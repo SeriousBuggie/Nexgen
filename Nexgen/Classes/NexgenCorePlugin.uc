@@ -294,5 +294,5 @@ function firstTick() {
 defaultproperties {
 	pluginName="Nexgen core controller"
 	pluginAuthor="Zeropoint"
-	pluginVersion="1.12 build 1154"
+	pluginVersion="1.13"
 }
