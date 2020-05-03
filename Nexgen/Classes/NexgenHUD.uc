@@ -41,18 +41,26 @@ class NexgenHUD extends Mutator;
 var NexgenClient client;                // Client owning this HUD.
 var PlayerPawn player;                  // Local player (which has a viewport).
 
+var bool bForceUpdate;
 var float lastSetupTime;                // Last time setup() was called.
+var byte baseFontSize;
+var byte otherFontSize;
 var Font baseFont;                      // Base font to use for rendering text.
+var Font otherFont;
 var Color blankColor;                   // White color (#FFFFFF).
 var Color baseHUDColor;                 // Base color of the HUD (background color).
 var Color baseColors[6];                // Base colors available for the HUD.
 var Color colors[11];                   // List of colors for text.
 var float baseFontHeight;               // Height of the base font.
+var float otherFontHeight;
+var byte defaultChatFontColor;
+var byte defaultOtherFontColor;
 
 struct MessageInfo {                    // Structure for storing message information.
 	var string text[5];                 // Message text list.
 	var int col[5];                     // Message text colors.
 	var float timeStamp;                // Time at which the message was received.
+	var byte displayType;
 };
 
 struct PanelInfo {                      // Panel info container structure.
@@ -63,8 +71,10 @@ struct PanelInfo {                      // Panel info container structure.
 	var bool bBlink;                    // Indicates if the text should 'blink'.
 };
 
-var MessageInfo chatMessages[3];        // List of chat messages.
-var MessageInfo messages[5];            // List of all other messages.
+var MessageInfo chatMessages[8];        // List of chat messages.
+var MessageInfo messages[8];            // List of all other messages.
+var byte maxChatMessages;
+var byte maxOtherMessages;
 var int chatMsgCount;                   // Number of chat messages stored in the list.
 var int msgCount;                       // Number of other messages stored.
 var Texture faceImg;                    // Face texture to display in the chat message box.
@@ -107,6 +117,15 @@ const alertAnimTime = 0.5;              // Animation cycle time.
 const alertAnimDist = 64;               // Distance the animated bar moves away from the window.
 const alertBorderSize = 32;             // Distance between borders and text of the window.
 const newLineToken = "\\n";             // Token used to break the text in multiple lines.
+
+// Fonts.
+const F_TINIEST = 0;
+const F_TINY = 1;
+const F_SMALLEST = 2;
+const F_SMALL = 3;
+const F_MEDIUM = 4;
+const F_BIG = 5;
+const F_HUGE = 6;
 
 // Colors.
 const C_RED = 0;
@@ -151,6 +170,12 @@ const CS_Normal = 'csnormal';           // Client is in normal state.
  **************************************************************************************************/
 function postBeginPlay() {
 	client = NexgenClient(owner);
+	baseFontSize   = F_SMALLEST;
+	otherFontSize  = F_SMALLEST;
+	defaultChatFontColor  = C_ORANGE;
+	defaultOtherFontColor = C_ORANGE;
+	maxChatMessages  = 3;
+	maxOtherMessages = 5;
 	bFlashMessages = client.gc.get(client.SSTR_FlashMessages, "false") ~= "true";
 	bShowPlayerLocation = client.gc.get(client.SSTR_ShowPlayerLocation, "true") ~= "true";
 }
@@ -350,8 +375,17 @@ simulated function message(string msg, name msgType, PlayerReplicationInfo pri1,
 	local PlayerReplicationInfo specPRI;
 	local GameReplicationInfo gri;
 	local int index;
+	local bool bSuppress;
 	local string locationName;
-
+	
+	// Allow plugins to decide whether to add the message or not.
+	while (index < arrayCount(client.clientCtrl) && client.clientCtrl[index] != none) {
+		bSuppress = bSuppress || client.clientCtrl[index].suppressMessage(msg, msgType, pri1, pri2);
+		index++;
+	}
+	
+	// Do not send if desired.
+	if(bSuppress) return;
 
 	// Check if the message was send by a spectator using say.
 	if (msgType == 'Event' && instr(msg, ":") >= 0) {
@@ -359,6 +393,7 @@ simulated function message(string msg, name msgType, PlayerReplicationInfo pri1,
 		gri = player.gameReplicationInfo;	
 		
 		// Find a player.
+		index = 0;
 		while (index < arrayCount(gri.PRIArray) && gri.PRIArray[index] != none) {
 			if (gri.PRIArray[index].bIsSpectator &&
 			    left(msg, len(gri.PRIArray[index].playerName) + 1) ~=
@@ -375,7 +410,7 @@ simulated function message(string msg, name msgType, PlayerReplicationInfo pri1,
 			index++;
 		}	
 	}
-
+	
 	// Check message type.
 	if (bIsSpecSayMsg) {
 		// Chat message. Special case: player is spec and using say (not teamsay).
@@ -409,7 +444,7 @@ simulated function message(string msg, name msgType, PlayerReplicationInfo pri1,
 			if (pri1.bIsSpectator && !pri1.bWaitingPlayer) {
 				messageColor = C_METAL;
 			} else {
-				messageColor = C_ORANGE;
+				messageColor = defaultChatFontColor;
 			}
 		}
 		
@@ -455,7 +490,7 @@ simulated function addColorizedMessage(string msg, PlayerReplicationInfo pri1, P
 	// Get message color.
 	msgColor = class'NexgenUtil'.static.getMessageColor(msg);
 	if (msgColor < 0) {
-		msgColor = C_ORANGE;
+		msgColor = defaultOtherFontColor;
 	}
 	msg = class'NexgenUtil'.static.removeMessageColorTag(msg);
 	
@@ -661,8 +696,10 @@ simulated function addChatMsg(int col1, string text1,
                               optional int col5, optional string text5) {
 	local int index;
 	
+	if(maxChatMessages <= 0) return;
+		
 	// Find position in messages list.
-	if (chatMsgCount < arrayCount(chatMessages)) {
+	if (chatMsgCount < maxChatMessages) {
 		index = chatMsgCount;
 		chatMsgCount++;
 	} else {
@@ -712,8 +749,10 @@ simulated function addMsg(int col1, string text1,
                           optional int col5, optional string text5) {
 	local int index;
 	
+	if(maxOtherMessages <= 0) return;
+	
 	// Find position in messages list.
-	if (msgCount < arrayCount(messages)) {
+	if (msgCount < maxOtherMessages) {
 		index = msgCount;
 		msgCount++;
 	} else {
@@ -751,9 +790,10 @@ simulated function addMsg(int col1, string text1,
 simulated function setup(Canvas c) {
 	local int index;
 	local bool bUpdateBase;
+	local float dummy;
 	
 	// Make sure the font ain't none.
-	if (baseFont == none) baseFont = getStaticSmallestFont(c.clipX);
+	if (baseFont == none) baseFont = getFont(baseFontSize, c);
 	c.font = baseFont;
 	
 	// Get local PlayerPawn.
@@ -788,12 +828,13 @@ simulated function setup(Canvas c) {
 		
 	// Check if the base variables need to be updated.
 	bUpdateBase = lastResX != c.clipX ||
-	              lastResY != c.clipY;
+	              lastResY != c.clipY ||
+				  bForceUpdate;
 	
 	// Update HUD base variables.
 	if (bUpdateBase) {	
 		// General variables.
-		baseFont = getStaticSmallestFont(c.clipX);
+		baseFont = getFont(baseFontSize, c);
 		c.font = baseFont;
 		c.strLen("Online [00:00]", minPanelWidth, baseFontHeight);
 		lastResX = c.clipX;
@@ -802,7 +843,14 @@ simulated function setup(Canvas c) {
 		// Message box info.
 		msgBoxWidth = int(c.clipX * 0.75);
 		msgBoxLineHeight = int(baseFontHeight + 4.0);
-		msgBoxHeight = msgBoxLineHeight * arrayCount(chatMessages);
+		msgBoxHeight = msgBoxLineHeight * maxChatMessages;
+		
+		// Other messages.
+		otherFont = getFont(otherFontSize, c);
+		c.font = otherFont;
+		c.strLen("XXX", dummy, otherFontHeight);
+		
+		bForceUpdate = false;
 	}
 	
 	// Remove expired messages.
@@ -858,7 +906,7 @@ simulated function preRenderHUD(Canvas c) {
 simulated function postRenderHUD(Canvas c) {
 	local int index;
   
-	setup(c);
+  setup(c);
 	
 	// Render the message box.
 	if (client.bUseNexgenMessageHUD) {
@@ -946,7 +994,7 @@ simulated function renderMessageBox(Canvas c) {
 	cx = msgBoxHeight + 2.0;
 	cy = (msgBoxLineHeight - baseFontHeight) / 2.0;
 	for (index = 0; index < chatMsgCount; index++) {
-		renderMessage(c, cx, cy, chatMessages[index]);
+		renderMessage(c, cx, cy, chatMessages[index], true);
 		cy += msgBoxLineHeight;
 	}
 	
@@ -957,8 +1005,8 @@ simulated function renderMessageBox(Canvas c) {
 		cy += msgBoxLineHeight;
 	}
 	for (index = 0; index < msgCount; index++) {
-		renderMessage(c, cx, cy, messages[index]);
-		cy += baseFontHeight;
+		renderMessage(c, cx, cy, messages[index], false);
+		cy += otherFontHeight;
 	}
 }
 
@@ -1010,7 +1058,7 @@ simulated function renderTypingPromt(Canvas c, string msg) {
  *  $REQUIRE      c != none && msg != none
  *
  **************************************************************************************************/
-simulated function renderMessage(Canvas c, float x, float y, MessageInfo msg) {
+simulated function renderMessage(Canvas c, float x, float y, MessageInfo msg, optional bool bChatMessage) {
 	local float cx;
 	local int msgIndex;
 	local float msgWidth;
@@ -1028,7 +1076,8 @@ simulated function renderMessage(Canvas c, float x, float y, MessageInfo msg) {
 
 	// Render message.
 	cx = x;
-	c.font = baseFont;
+	if(bChatMessage) c.font = baseFont;
+	else 			 c.font = otherFont;
 	c.style = ERenderStyle.STY_Normal;	
 	for (msgIndex = 0; msgIndex < 5; msgIndex++) {
 		c.setPos(cx, y);
@@ -1453,18 +1502,33 @@ simulated function addHUDExtension(NexgenHUDExtension extension) {
  *  $ENSURE       result != none
  *
  **************************************************************************************************/
-static function Font getStaticSmallestFont(float width) {
-	if (width < 640) {
-		return Font'SmallFont';
-	} else if (width < 800) {
-		return Font(DynamicLoadObject("LadderFonts.UTLadder10", class'Font'));
-	} else if (width < 1024) {
-		return Font(DynamicLoadObject("LadderFonts.UTLadder12", class'Font'));
-	} else {
-		return Font(DynamicLoadObject("LadderFonts.UTLadder14", class'Font'));
+static function Font getFont(byte size, Canvas c) {
+	switch(size) {
+		case F_TINIEST:
+			return class'BotPack.FontInfo'.static.GetStaticACompletelyUnreadableFont(c.clipX);
+		break;
+		case F_TINY:
+			return class'BotPack.FontInfo'.static.GetStaticAReallySmallFont(c.clipX);
+		break;
+		case F_SMALLEST:
+			return class'BotPack.FontInfo'.static.GetStaticSmallestFont(c.clipX);
+		break;
+		case F_SMALL:
+			return class'BotPack.FontInfo'.static.GetStaticSmallFont(c.clipX);
+		break;
+		case F_MEDIUM:
+			return class'BotPack.FontInfo'.static.GetStaticMediumFont(c.clipX);
+		break;	
+		case F_BIG:
+			return class'BotPack.FontInfo'.static.GetStaticBigFont(c.clipX);
+		break;	
+		case F_HUGE:
+			return class'BotPack.FontInfo'.static.GetStaticHugeFont(c.clipX);
+		break;
+		default:
+			getFont(F_SMALLEST, c);
 	}
 }
-
 
 
 /***************************************************************************************************

@@ -215,6 +215,22 @@ function logAdminAction(string msg, optional coerce string str1, optional coerce
 
 /***************************************************************************************************
  *
+ *  $DESCRIPTION  Decide whether to add a message to the message HUD.
+ *  $PARAM        msg      The message that is to be displayed.
+ *  $PARAM        msgType  Message type identifier.
+ *  $PARAM        pri1     Replication info of the first player involved.
+ *  $PARAM        pri2     Replication info of the second player involved.
+ *  $RETURN       True if the message should not be displayed on the HUD.
+ *
+ **************************************************************************************************/
+simulated function bool suppressMessage(string msg, name msgType, PlayerReplicationInfo pri1, PlayerReplicationInfo pri2) {
+	return false;
+}
+
+
+
+/***************************************************************************************************
+ *
  *  $DESCRIPTION  Default properties block.
  *
  **************************************************************************************************/

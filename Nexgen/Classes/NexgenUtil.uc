@@ -13,7 +13,6 @@ class NexgenUtil extends Object;
 
 var float version;            // Nexgen version number.
 var int versionCode;          // Internal version number.
-var int internalVersion;      // Internal version number.
 var string packageName;       // Name of the Nexgen package. 
 var string countryFlagsPkg;   // Package containing the flag textures.
 
@@ -1251,7 +1250,6 @@ static function string getObjectClassName(Object o) {
 defaultproperties {
 	version=1.13
 	versionCode=113
-	internalVersion=1154
 	packageName="Nexgen113"
 	countryFlagsPkg="CountryFlags2"
 }

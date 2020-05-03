@@ -30,8 +30,7 @@ function setContent() {
 	divideRegionH(18);
 	skipRegion();
 	addLabel("Nexgen Server Controller", true, TA_Center);
-	addLabel("version" @ left(class'NexgenUtil'.default.version, 4) @
-	         "build" @ class'NexgenUtil'.default.internalVersion, , TA_Center);
+	addLabel("version" @ left(class'NexgenUtil'.default.version, 4), , TA_Center);
 	addLabel("Copyright © 2006-2011 Zeropoint productions", , TA_Center);
 	addLabel("d.scheerens@gmail.com", , TA_Center);
 	skipRegion();

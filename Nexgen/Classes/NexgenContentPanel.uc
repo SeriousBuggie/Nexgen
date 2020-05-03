@@ -722,6 +722,27 @@ function UWindowListBox addListBox(class<UWindowListBox> listBoxClass) {
 
 /***************************************************************************************************
  *
+ *  $DESCRIPTION  Adds a new H slider control component to the current region.
+ *  $REQUIRE      0 <= currRegion && currRegion < regionCount
+ *  $RETURN       The H slider control that has been added to the panel.
+ *  $ENSURE       result != none
+ *
+ **************************************************************************************************/
+function NexgenHSliderControl addHSlider(optional string text, optional int dist, optional TextAlign align) {
+	local NexgenHSliderControl hSlider;
+	
+	hSlider = NexgenHSliderControl(addComponent(class'NexgenHSliderControl'));
+	hSlider.setText(text);
+	hSlider.dist = dist;
+	hSlider.align = align;
+	
+	return hSlider;
+}
+
+
+
+/***************************************************************************************************
+ *
  *  $DESCRIPTION  Notifies the dialog of an event (caused by user interaction with the interface).
  *  $PARAM        control    The control object where the event was triggered.
  *  $PARAM        eventType  Identifier for the type of event that has occurred.
