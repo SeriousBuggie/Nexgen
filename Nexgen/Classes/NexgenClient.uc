@@ -116,6 +116,30 @@ const SSTR_PlayPMSound = "PlayPMSound";           // Play a sound when a PM is r
 const SSTR_AutoSSNormalGame = "AutoSSNormalGame"; // Automatically take scrshot at end of normal games.
 const SSTR_AutoSSMatch = "AutoSSMatch";           // Automatically take scrshot at end of matches.
 const SSTR_RunCount = "RunCount";                 // Number of times Nexgen has been used.
+const SSTR_HUDSettings = "HUDSettings";           // HUD settings (encoded in a single string to save entries)
+
+// HUD settings keys
+const HUDS_ChatCount = "CCount";
+const HUDS_ChatSize = "CSize";
+const HUDS_ChatColor = "CColor";
+const HUDS_OtherCount = "OCount";
+const HUDS_OtherSize = "OSize";
+const HUDS_OtherColor = "OColor";
+const HUDS_useUTColor = "useUTHUDColor";
+
+// Default HUD values
+const HUDD_ChatCount = "3";
+const HUDD_ChatSize  = "2";
+const HUDD_ChatColor = "9";
+const HUDD_OtherCount= "5";
+const HUDD_OtherSize = "2";
+const HUDD_OtherColor= "9";
+const HUDD_useUTColor= "false";
+
+// MHA default values
+const HUDMHA_ChatColor = "2";
+const HUDMHA_OtherColor = "7";
+const HUDMHA_useUTColor = "true";
 
 // Client rights.
 const R_MayPlay = "A";                            // Allowed to play on the server.
@@ -146,6 +170,7 @@ const startCommand = "Mutate NSC START";          // Console command for startin
 const changeNetSpeedCommand = "Netspeed";         // Console command for changing a players netspeed.
 const spectatorClass = "Botpack.CHSpectator";     // Override class to use for spectators.
 const separator = ",";                            // Character used to seperate elements in a list.
+const assignment = "=";
 
 // Player events.
 const PE_PlayerJoined = "pj";                     // A new player has joined the server.
@@ -183,8 +208,6 @@ const minDesiredNetSpeed = 5000;                  // Minimum net speed setting t
                                                   // timeout occurs.
 const serverHealthCheckInterval = 0.2;            // Intervals between server health check when a bad
                                                   // connection alert has been detected.
-
-
 
 /***************************************************************************************************
  *
@@ -269,6 +292,7 @@ simulated event postNetBeginPlay() {
 		
 		// Setup GUI.
 		nscHUD = spawn(class'NexgenHUD', self);
+		loadExtendedHUDSettings();
 		if (gc.get(SSTR_UseNexgenHUD, "true") ~= "true") {
 			setNexgenMessageHUD(true);
 		}
@@ -1683,6 +1707,92 @@ function doHealthCheck() {
  **************************************************************************************************/
 simulated function notifyServerHealth() {
 	bBadConnectionDetected = false;
+}
+
+
+
+/***************************************************************************************************
+ *
+ *  $DESCRIPTION  Loads the extended HUD settings into the nscHUD instance.
+ *
+ **************************************************************************************************/
+simulated function loadExtendedHUDSettings() {
+	local string settingsString, defaultSettingsString;
+	
+	defaultSettingsString = HUDS_ChatCount $ assignment $ HUDD_ChatCount $ separator $
+							HUDS_ChatSize  $ assignment $ HUDD_ChatSize  $ separator $
+							HUDS_ChatColor $ assignment $ HUDD_ChatColor $ separator $
+							HUDS_OtherCount$ assignment $ HUDD_OtherCount$ separator $
+							HUDS_OtherSize $ assignment $ HUDD_OtherSize $ separator $
+							HUDS_OtherColor$ assignment $ HUDD_OtherColor$ separator $
+							HUDS_useUTColor$ assignment $ HUDD_useUTColor; 
+	
+	settingsString = gc.get(SSTR_HUDSettings, defaultSettingsString);
+	nscHUD.chatMsgMaxCount  = clamp(int(class'NexgenUtil'.static.getProperty(settingsString, HUDS_ChatCount,  HUDD_ChatCount)),  3, 8);	
+	nscHUD.chatMsgSize      = clamp(int(class'NexgenUtil'.static.getProperty(settingsString, HUDS_ChatSize,   HUDD_ChatSize)),   0, 6);
+	nscHUD.chatMsgColor     = clamp(int(class'NexgenUtil'.static.getProperty(settingsString, HUDS_ChatColor,  HUDD_ChatColor)),  0, 10);
+	nscHUD.otherMsgMaxCount = clamp(int(class'NexgenUtil'.static.getProperty(settingsString, HUDS_OtherCount, HUDD_OtherCount)), 0, 12);	
+	nscHUD.otherMsgSize     = clamp(int(class'NexgenUtil'.static.getProperty(settingsString, HUDS_OtherSize,  HUDD_OtherSize)),  0, 6);
+	nscHUD.otherMsgColor    = clamp(int(class'NexgenUtil'.static.getProperty(settingsString, HUDS_OtherColor, HUDD_OtherColor)), 0, 10);
+	nscHUD.useUTHUDColor    = bool(class'NexgenUtil'.static.getProperty(settingsString, HUDS_useUTColor, HUDD_useUTColor));
+}
+
+
+
+/***************************************************************************************************
+ *
+ *  $DESCRIPTION  Saves the extended HUD settings.
+ *
+ **************************************************************************************************/
+simulated function saveExtendedHUDSettings() {
+	local string settingsString;
+	
+	settingsString = HUDS_ChatCount $ assignment $ nscHUD.chatMsgMaxCount $ separator $
+					 HUDS_ChatSize  $ assignment $ nscHUD.chatMsgSize     $ separator $
+					 HUDS_ChatColor $ assignment $ nscHUD.chatMsgColor    $ separator $
+					 HUDS_OtherCount$ assignment $ nscHUD.otherMsgMaxCount$ separator $
+					 HUDS_OtherSize $ assignment $ nscHUD.otherMsgSize    $ separator $
+					 HUDS_OtherColor$ assignment $ nscHUD.otherMsgColor   $ separator $
+					 HUDS_useUTColor$ assignment $ nscHUD.useUTHUDColor; 
+	
+	gc.set(SSTR_HUDSettings, settingsString);
+	gc.saveConfig();
+}
+
+
+
+/***************************************************************************************************
+ *
+ *  $DESCRIPTION  Determines to what color scheme the HUD is configured.
+ *
+ **************************************************************************************************/
+simulated function byte checkHUDStyle() {
+	if(nscHUD.chatMsgColor == byte(HUDD_ChatColor) && nscHUD.otherMsgColor == byte(HUDD_OtherColor) && nscHUD.useUTHUDColor == bool(HUDD_useUTColor)) return 0;
+	if(nscHUD.chatMsgColor == byte(HUDMHA_ChatColor) && nscHUD.otherMsgColor == byte(HUDMHA_OtherColor) && nscHUD.useUTHUDColor == bool(HUDMHA_useUTColor)) return 1;
+	
+	return 2;
+}
+
+
+
+/***************************************************************************************************
+ *
+ *  $DESCRIPTION  Sets the HUD to predeterimed color scheme.
+ *
+ **************************************************************************************************/
+simulated function setHUDStyle(byte style) {
+	switch (style) {
+		case 0:
+			nscHUD.chatMsgColor  = byte(HUDD_ChatColor);
+			nscHUD.otherMsgColor = byte(HUDD_OtherColor);
+			nscHUD.useUTHUDColor = bool(HUDD_useUTColor);
+			break;
+		case 1:
+			nscHUD.chatMsgColor  = byte(HUDMHA_ChatColor);
+			nscHUD.otherMsgColor = byte(HUDMHA_OtherColor);
+			nscHUD.useUTHUDColor = bool(HUDMHA_useUTColor);
+		break;
+	}
 }
 
 

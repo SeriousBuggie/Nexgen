@@ -43,18 +43,14 @@ var PlayerPawn player;                  // Local player (which has a viewport).
 
 var bool bForceUpdate;
 var float lastSetupTime;                // Last time setup() was called.
-var byte baseFontSize;
-var byte otherFontSize;
 var Font baseFont;                      // Base font to use for rendering text.
-var Font otherFont;
+var Font otherFont;									
 var Color blankColor;                   // White color (#FFFFFF).
 var Color baseHUDColor;                 // Base color of the HUD (background color).
 var Color baseColors[6];                // Base colors available for the HUD.
 var Color colors[11];                   // List of colors for text.
 var float baseFontHeight;               // Height of the base font.
 var float otherFontHeight;
-var byte defaultChatFontColor;
-var byte defaultOtherFontColor;
 
 struct MessageInfo {                    // Structure for storing message information.
 	var string text[5];                 // Message text list.
@@ -72,9 +68,7 @@ struct PanelInfo {                      // Panel info container structure.
 };
 
 var MessageInfo chatMessages[8];        // List of chat messages.
-var MessageInfo messages[8];            // List of all other messages.
-var byte maxChatMessages;
-var byte maxOtherMessages;
+var MessageInfo messages[12];           // List of all other messages.
 var int chatMsgCount;                   // Number of chat messages stored in the list.
 var int msgCount;                       // Number of other messages stored.
 var Texture faceImg;                    // Face texture to display in the chat message box.
@@ -96,6 +90,15 @@ var float timeSeconds;                  // Gamespeed independent timeSeconds, th
 var bool bShowPlayerLocation;           // Show player location name in teamsay messages?
 
 var NexgenHUDExtension extensions[10];  // Registered HUD extensions.
+
+// Extended HUD settings introduced in 113
+var byte chatMsgMaxCount;
+var byte chatMsgSize;
+var byte chatMsgColor;
+var byte otherMsgMaxCount;
+var byte otherMsgSize;
+var byte otherMsgColor;
+var bool useUTHUDColor;
 
 const iconSize = 24.0;                  // Size of the status icons.
 
@@ -138,6 +141,7 @@ const C_PINK = 6;
 const C_CYAN = 7;
 const C_METAL = 8;
 const C_ORANGE = 9;
+const C_DARKRED = 10;
 
 // Server states.
 const SS_Loading = 'ssloading';         // Loading.
@@ -170,12 +174,6 @@ const CS_Normal = 'csnormal';           // Client is in normal state.
  **************************************************************************************************/
 function postBeginPlay() {
 	client = NexgenClient(owner);
-	baseFontSize   = F_SMALLEST;
-	otherFontSize  = F_SMALLEST;
-	defaultChatFontColor  = C_ORANGE;
-	defaultOtherFontColor = C_ORANGE;
-	maxChatMessages  = 3;
-	maxOtherMessages = 5;
 	bFlashMessages = client.gc.get(client.SSTR_FlashMessages, "false") ~= "true";
 	bShowPlayerLocation = client.gc.get(client.SSTR_ShowPlayerLocation, "true") ~= "true";
 }
@@ -444,7 +442,7 @@ simulated function message(string msg, name msgType, PlayerReplicationInfo pri1,
 			if (pri1.bIsSpectator && !pri1.bWaitingPlayer) {
 				messageColor = C_METAL;
 			} else {
-				messageColor = defaultChatFontColor;
+				messageColor = chatMsgColor;
 			}
 		}
 		
@@ -490,7 +488,7 @@ simulated function addColorizedMessage(string msg, PlayerReplicationInfo pri1, P
 	// Get message color.
 	msgColor = class'NexgenUtil'.static.getMessageColor(msg);
 	if (msgColor < 0) {
-		msgColor = defaultOtherFontColor;
+		msgColor = otherMsgColor;
 	}
 	msg = class'NexgenUtil'.static.removeMessageColorTag(msg);
 	
@@ -567,8 +565,6 @@ simulated function getPlayerNameIndices(string msg, out PlayerReplicationInfo pr
 	// Get shortcut to the game replication info.
 	gri = player.gameReplicationInfo;
 	
-	
-	
 	// Initially no indices have been found.
 	index1 = -1;
 	index2 = -1;
@@ -589,8 +585,6 @@ simulated function getPlayerNameIndices(string msg, out PlayerReplicationInfo pr
 		pri1 = pri2;
 		pri2 = tmpPRI;
 	}
-	
-	
 	
 	// Get the position of the first player name in the message.
 	if (pri1 == none) {
@@ -618,8 +612,6 @@ simulated function getPlayerNameIndices(string msg, out PlayerReplicationInfo pr
 		// Already got PRI, just find the index of the name.
 		index1 = instr(msg, pri1.playerName);
 	}
-	
-	
 	
 	// Get the position of the second player name in the message.
 	if (pri1 != none && pri2 == none) {
@@ -696,10 +688,10 @@ simulated function addChatMsg(int col1, string text1,
                               optional int col5, optional string text5) {
 	local int index;
 	
-	if(maxChatMessages <= 0) return;
+	if(chatMsgMaxCount <= 0) return;
 		
 	// Find position in messages list.
-	if (chatMsgCount < maxChatMessages) {
+	if (chatMsgCount < chatMsgMaxCount) {
 		index = chatMsgCount;
 		chatMsgCount++;
 	} else {
@@ -749,10 +741,10 @@ simulated function addMsg(int col1, string text1,
                           optional int col5, optional string text5) {
 	local int index;
 	
-	if(maxOtherMessages <= 0) return;
+	if(otherMsgMaxCount <= 0) return;
 	
 	// Find position in messages list.
-	if (msgCount < maxOtherMessages) {
+	if (msgCount < otherMsgMaxCount) {
 		index = msgCount;
 		msgCount++;
 	} else {
@@ -793,7 +785,7 @@ simulated function setup(Canvas c) {
 	local float dummy;
 	
 	// Make sure the font ain't none.
-	if (baseFont == none) baseFont = getFont(baseFontSize, c);
+	if (baseFont == none) baseFont = getFont(chatMsgSize, c);
 	c.font = baseFont;
 	
 	// Get local PlayerPawn.
@@ -805,8 +797,7 @@ simulated function setup(Canvas c) {
 	} else if (player.playerReplicationInfo.bIsSpectator &&
 	    !player.playerReplicationInfo.bWaitingPlayer) {
 		baseHUDColor = baseColors[4];
-	} else if (!player.gameReplicationInfo.bTeamGame &&
-		       ChallengeHUD(player.myHUD) != none) {
+	} else if (useUTHUDColor || (!player.gameReplicationInfo.bTeamGame && ChallengeHUD(player.myHUD) != none)) {
 		baseHUDColor = ChallengeHUD(player.myHUD).favoriteHUDColor * 15.9;
 	} else if (0 <= player.playerReplicationInfo.team && player.playerReplicationInfo.team <= 3) {
 		baseHUDColor = baseColors[player.playerReplicationInfo.team];
@@ -834,7 +825,7 @@ simulated function setup(Canvas c) {
 	// Update HUD base variables.
 	if (bUpdateBase) {	
 		// General variables.
-		baseFont = getFont(baseFontSize, c);
+		baseFont = getFont(chatMsgSize, c);
 		c.font = baseFont;
 		c.strLen("Online [00:00]", minPanelWidth, baseFontHeight);
 		lastResX = c.clipX;
@@ -843,10 +834,10 @@ simulated function setup(Canvas c) {
 		// Message box info.
 		msgBoxWidth = int(c.clipX * 0.75);
 		msgBoxLineHeight = int(baseFontHeight + 4.0);
-		msgBoxHeight = msgBoxLineHeight * maxChatMessages;
+		msgBoxHeight = msgBoxLineHeight * chatMsgMaxCount;
 		
 		// Other messages.
-		otherFont = getFont(otherFontSize, c);
+		otherFont = getFont(otherMsgSize, c);
 		c.font = otherFont;
 		c.strLen("XXX", dummy, otherFontHeight);
 		
@@ -906,7 +897,7 @@ simulated function preRenderHUD(Canvas c) {
 simulated function postRenderHUD(Canvas c) {
 	local int index;
   
-  setup(c);
+	setup(c);
 	
 	// Render the message box.
 	if (client.bUseNexgenMessageHUD) {
@@ -946,7 +937,8 @@ simulated function renderMessageBox(Canvas c) {
 	panelWidth = fMax(getPanelWidth(serverState, c, panelHeight), getPanelWidth(clientState, c, panelHeight));
 	
 	// Background.
-	c.style = ERenderStyle.STY_Translucent;
+	if(useUTHUDColor && ChallengeHUD(player.myHUD).Opacity == 16) c.style = ERenderStyle.STY_Normal;
+	else														  c.style = ERenderStyle.STY_Translucent;
 	c.drawColor = baseHUDColor * 0.4;
 	c.setPos(1.0, 1.0);
 	c.drawTile(Texture'grad64', msgBoxWidth - 2.0, msgBoxHeight - 2.0, 0.0, 0.0, 64.0, 64.0);
@@ -1023,7 +1015,8 @@ simulated function renderTypingPromt(Canvas c, string msg) {
 	local float msgOffset;
 	
 	// Background.
-	c.style = ERenderStyle.STY_Translucent;
+	if(useUTHUDColor && ChallengeHUD(player.myHUD).Opacity == 16) c.style = ERenderStyle.STY_Normal;
+	else														  c.style = ERenderStyle.STY_Translucent;
 	c.drawColor = baseHUDColor * 0.4;
 	c.setPos(1.0, msgBoxHeight);
 	c.drawTile(Texture'grad32', msgBoxWidth - 2.0, msgBoxLineHeight - 1.0, 0.0, 0.0, 32.0, 32.0);
@@ -1416,7 +1409,8 @@ simulated function renderPanel(PanelInfo pInf, canvas c, float panelHeight, floa
 			cy = y + int((panelHeight - iconSize) / 2.0);
 		}
 		
-		c.style = ERenderStyle.STY_Translucent;
+		if(useUTHUDColor && ChallengeHUD(player.myHUD).Opacity == 16) c.style = ERenderStyle.STY_Normal;
+		else														  c.style = ERenderStyle.STY_Translucent;		
 		c.drawColor = blankColor;
 		c.setPos(cx, cy);
 		c.drawTile(pInf.icon, iconHeight, iconHeight, 0.0, 0.0, iconSize, iconSize);

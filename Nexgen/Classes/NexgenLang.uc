@@ -299,12 +299,22 @@ const suicideBindTxt = "Suicide";
 const openMapVoteBindTxt = "Open map vote";
 const openCPBindTxt = "Open control panel";
 const pauseGameBindTxt = "Pause game";
-const UISettingsTxt = "User interface";
+const UISettingsTxt = "HUD settings";
 const enableMsgHUDTxt = "Enable Nexgen message HUD";
 const msgFlashEffectTxt = "Enable message 'flash' effect";
 const showPlayerLocationTxt = "Show player location on teamsay messages";
-const pmSoundTxt = "Play a sound when a private message arrives";
+const chatBoxTxt = "Chat box";
+const otherMessagesTxt = "Other messages";
+const numberOfLinesTxt = "Line count";
+const fontSizeTxt = "Font size";
+const fontColorTxt = "Font color";
+const useUTHUDColorTxt = "Use HUD color from UT preferences";
+const HUDStyleTxt = "HUD color scheme";
+const defaultTxt = "Default";
+const mhaTxt = "MHA style";
+const customTxt = "Custom";
 const miscSettingsTxt = "Miscellaneous settings";
+const pmSoundTxt = "Play a sound when a private message arrives";
 const autoSSNormalGameTxt = "Auto screenshot at the end of normal games";
 const autoSSMatchTxt = "Auto screenshot at the end of matches";
 
@@ -928,5 +938,33 @@ static function string getShortMonthName(int month) {
 		case 10: return "Oct";
 		case 11: return "Nov";
 		case 12: return "Dec";
+	}
+}
+
+
+
+/***************************************************************************************************
+ *
+ *  $DESCRIPTION  Retrieves the textual representation of a text color.
+ *  $PARAM        color  The index of the color as given in NexgenHUD.
+ *  $REQUIRE      0 <= color && color <= 10
+ *  $RETURN       A textual representation of the color.
+ *  $ENSURE       result != ""
+ *
+ **************************************************************************************************/
+static function string getTextColorName(byte color) {
+	switch (color) {
+		case 0: return "Red";
+		case 1: return "Blue";
+		case 2: return "Green";
+		case 3: return "Yellow";
+		case 4: return "White";
+		case 5: return "Black";
+		case 6: return "Pink";
+		case 7: return "Cyan";
+		case 8: return "Metal";
+		case 9: return "Orange";
+		case 10: return "Dark red";
+
 	}
 }

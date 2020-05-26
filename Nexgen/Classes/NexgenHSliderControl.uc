@@ -6,7 +6,7 @@
  *  $VERSION      1.00 (03-05-2020 15:30)
  *  $AUTHOR       Patrick 'Sp0ngeb0b' Peltzer
  *  $CONTACT      spongebobut@yahoo.com
- *  $DESCRIPTION  Nexgen extended H Slider component class.
+ *  $DESCRIPTION  Nexgen H Slider component class.
  *
  **************************************************************************************************/
 class NexgenHSliderControl extends UWindowHSliderControl;

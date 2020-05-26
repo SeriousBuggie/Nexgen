@@ -23,6 +23,15 @@ var UWindowComboControl chatAreaColorInp;
 var UWindowComboControl otherAreaLinesInp;
 var NexgenHSliderControl otherAreaFontInp;
 var UWindowComboControl otherAreaColorInp;
+var UWindowCheckbox useGameHUDColorInp;
+var UWindowComboControl HUDStyleInp;
+
+var bool bCheckingHUDStyle;
+
+const minChatMsgs  = 3;
+const maxChatMsgs  = 8;
+const minOtherMsgs = 0;
+const maxOtherMsgs = 12;
 
 /***************************************************************************************************
  *
@@ -31,45 +40,61 @@ var UWindowComboControl otherAreaColorInp;
  *
  **************************************************************************************************/
 function setContent() {
-	local NexgenContentPanel p;
-	local int index;	
+	local NexgenContentPanel p, pp;
+	local int tmpRegion, index;	
 	
 	// Create layout & add components.
 	setAcceptsFocus();
-	createPanelRootRegion(); //createWindowRootRegion();
+	createPanelRootRegion();
 	splitRegionV(196, defaultComponentDist);
 	
 	// Keybindings.
     addSubPanel(class'NexgenCPKeyBind');
 	
 	// User Interface settings.
-	splitRegionH(192, defaultComponentDist);
+	splitRegionH(208, defaultComponentDist);
 	p = addContentPanel();
 	p.splitRegionH(16);
 	p.addLabel(client.lng.UISettingsTxt, true, TA_Center);
-	p.divideRegionH(9);
+	p.splitRegionH(56, defaultComponentDist);
+	p.divideRegionH(3, defaultComponentDist);
+	p.splitRegionH(40, defaultComponentDist, , true);
 	enableNexgenHUDInp = p.addCheckBox(TA_Left, client.lng.enableMsgHUDTxt);
-	p.splitRegionV(32, defaultComponentDist, , true);
-	p.splitRegionV(96, defaultComponentDist, , true);
-	p.splitRegionV(64, defaultComponentDist, , true);
-	p.splitRegionV(32, defaultComponentDist, , true);
-	p.splitRegionV(96, defaultComponentDist, , true);
-	p.splitRegionV(64, defaultComponentDist, , true);
 	useMsgFlashEffectInp = p.addCheckBox(TA_Left, client.lng.msgFlashEffectTxt);
 	showPlayerLocationInp = p.addCheckBox(TA_Left, client.lng.showPlayerLocationTxt);
-	p.addLabel("Chat messages line count");
-	chatAreaLinesInp = p.addListCombo();
-	p.addLabel("Chat messages font size");
-	chatAreaFontInp = p.addHSlider();
-	p.addLabel("Chat messages default font color");
-	chatAreaColorInp = p.addListCombo();
-	p.addLabel("Other messages line count");
-	otherAreaLinesInp = p.addListCombo();
-	p.addLabel("Other messages font size");
-	otherAreaFontInp = p.addHSlider();
-	p.addLabel("Other messages default font color");
-	otherAreaColorInp = p.addListCombo();
-	
+	p.divideRegionV(2, defaultComponentDist);
+	tmpRegion = p.currRegion++;
+	pp = p.addContentPanel();
+	pp.divideRegionH(4, defaultComponentDist);
+	pp.addLabel(client.lng.chatBoxTxt, true, TA_Center);
+	pp.splitRegionV(32, defaultComponentDist, , true);
+	pp.splitRegionV(80, defaultComponentDist, , true);
+	pp.splitRegionV(64, defaultComponentDist, , true);
+	pp.addLabel(client.lng.numberOfLinesTxt);
+	chatAreaLinesInp = pp.addListCombo();
+	pp.addLabel(client.lng.fontSizeTxt);
+	chatAreaFontInp = pp.addHSlider();
+	pp.addLabel(client.lng.fontColorTxt);
+	chatAreaColorInp = pp.addListCombo();
+	pp = p.addContentPanel();
+	pp.divideRegionH(4, defaultComponentDist);
+	pp.addLabel(client.lng.otherMessagesTxt, true, TA_Center);
+	pp.splitRegionV(32, defaultComponentDist, , true);
+	pp.splitRegionV(80, defaultComponentDist, , true);
+	pp.splitRegionV(64, defaultComponentDist, , true);
+	pp.addLabel(client.lng.numberOfLinesTxt);
+	otherAreaLinesInp = pp.addListCombo();
+	pp.addLabel(client.lng.fontSizeTxt);
+	otherAreaFontInp = pp.addHSlider();
+	pp.addLabel(client.lng.fontColorTxt);
+	otherAreaColorInp = pp.addListCombo();
+	p.selectRegion(tmpRegion);
+	p.selectRegion(p.divideRegionH(2, defaultComponentDist));
+	useGameHUDColorInp = p.addCheckBox(TA_Left, client.lng.useUTHUDColorTxt);
+	p.splitRegionV(96, defaultComponentDist, , true);
+	p.addLabel(client.lng.HUDStyleTxt);
+	HUDStyleInp = p.addListCombo();
+
 	// Other stuff.
 	splitRegionH(80, defaultComponentDist);
 	p = addContentPanel();
@@ -82,57 +107,53 @@ function setContent() {
 	
 	// Configure components.
 	enableNexgenHUDInp.register(self);
+	useMsgFlashEffectInp.register(self);
+	showPlayerLocationInp.register(self);
 	chatAreaLinesInp.register(self);
 	chatAreaFontInp.register(self);
 	chatAreaColorInp.register(self);
 	otherAreaLinesInp.register(self);
 	otherAreaFontInp.register(self);
 	otherAreaColorInp.register(self);
-	useMsgFlashEffectInp.register(self);
-	showPlayerLocationInp.register(self);
+	useGameHUDColorInp.register(self);
+	HUDStyleInp.register(self);
 	playPMSoundInp.register(self);
 	autoSSNormalGameInp.register(self);
 	autoSSMatchInp.register(self);
+	
+	// Configure edit boxes
+	for(index=minChatMsgs;  index<=maxChatMsgs;  index++) chatAreaLinesInp.addItem(string(index));
+	for(index=minOtherMsgs; index<=maxOtherMsgs; index++) otherAreaLinesInp.addItem(string(index));
+	for(index=0; index <=10; index++) {
+		chatAreaColorInp.addItem(client.lng.getTextColorName(index));
+		otherAreaColorInp.addItem(client.lng.getTextColorName(index));
+	}
+	HUDStyleInp.addItem(client.lng.defaultTxt);
+	HUDStyleInp.addItem(client.lng.mhaTxt);
+	HUDStyleInp.addItem(client.lng.customTxt);
 
+	// H sliders
+	chatAreaFontInp.SetRange(0, 6, 1);
+	otherAreaFontInp.SetRange(0, 6, 1);
+	
+	// Load settings
 	enableNexgenHUDInp.bChecked = client.gc.get(client.SSTR_UseNexgenHUD, "true") ~= "true";
 	useMsgFlashEffectInp.bChecked = client.gc.get(client.SSTR_FlashMessages, "false") ~= "true";
 	showPlayerLocationInp.bChecked = client.gc.get(client.SSTR_ShowPlayerLocation, "true") ~= "true";
 	playPMSoundInp.bChecked = client.gc.get(client.SSTR_PlayPMSound, "true") ~= "true";
 	autoSSNormalGameInp.bChecked = client.gc.get(client.SSTR_AutoSSNormalGame, "false") ~= "true";
 	autoSSMatchInp.bChecked = client.gc.get(client.SSTR_AutoSSMatch, "true") ~= "true";
-	
-	loadNumOfLines(3, 8, chatAreaLinesInp);
-	loadNumOfLines(0, 8, otherAreaLinesInp);
-	loadFontColors(chatAreaColorInp);
-	loadFontColors(otherAreaColorInp);
-
-	chatAreaFontInp.SetRange(1, 7, 1);
-	otherAreaFontInp.SetRange(1, 7, 1);
-	
-	chatAreaFontInp.SetValue(2);
-	otherAreaFontInp.SetValue(1);
+	chatAreaLinesInp.setSelectedIndex(client.nscHUD.chatMsgMaxCount-minChatMsgs);
+	chatAreaFontInp.setValue(client.nscHUD.chatMsgSize);
+	chatAreaColorInp.setSelectedIndex(client.nscHUD.chatMsgColor);
+	otherAreaLinesInp.setSelectedIndex(client.nscHUD.otherMsgMaxCount-minOtherMsgs);
+	otherAreaFontInp.setValue(client.nscHUD.otherMsgSize);
+	otherAreaColorInp.setSelectedIndex(client.nscHUD.otherMsgColor);
+	useGameHUDColorInp.bChecked = client.nscHUD.useUTHUDColor;
+	checkHUDStyle();
 }
 
-function loadNumOfLines(byte start, byte end, UWindowComboControl comboList) {
-	local int i;
-	
-	for(i=start; i<=end; i++) {
-		comboList.addItem(string(i));
-	}
-} 
 
-function loadFontColors(UWindowComboControl comboList) {
-	comboList.addItem("Red");
-	comboList.addItem("Blue");
-	comboList.addItem("Green");
-	comboList.addItem("Yellow");
-	comboList.addItem("White");
-	comboList.addItem("Black");
-	comboList.addItem("Pink");
-	comboList.addItem("Cyan");
-	comboList.addItem("Metal");
-	comboList.addItem("Orange");
-} 
 
 /***************************************************************************************************
  *
@@ -156,39 +177,6 @@ function notify(UWindowDialogControl control, byte eventType) {
 		client.setNexgenMessageHUD(enableNexgenHUDInp.bChecked);
 	}
 	
-	// Message HUD line count change
-	if (control == chatAreaLinesInp && eventType == DE_Change) {
-		client.nscHUD.maxChatMessages = byte(chatAreaLinesInp.getValue());
-		client.nscHUD.bForceUpdate = true;	
-	}	
-	
-	// Message HUD font size change 
-	if (control == chatAreaFontInp && eventType == DE_Change) {
-		client.nscHUD.baseFontSize = chatAreaFontInp.getValue();
-		client.nscHUD.bForceUpdate = true;
-	}
-	
-	// Chat messages default color changed
-	if (control == chatAreaColorInp && eventType == DE_Change) {
-		client.nscHUD.defaultChatFontColor = chatAreaColorInp.GetSelectedIndex();
-	}
-	
-	// Other messages line count change
-	if (control == otherAreaLinesInp && eventType == DE_Change) {
-		client.nscHUD.maxOtherMessages = byte(otherAreaLinesInp.getValue());
-	}
-	
-	// Other messages font size change 
-	if (control == otherAreaFontInp && eventType == DE_Change) {
-		client.nscHUD.otherFontSize = otherAreaFontInp.getValue();
-		client.nscHUD.bForceUpdate = true;
-	}
-	
-	// Other messages default color changed
-	if (control == otherAreaColorInp && eventType == DE_Change) {
-		client.nscHUD.defaultOtherFontColor = otherAreaColorInp.GetSelectedIndex();
-	}
-	
 	// Toggle message flash effect on/off.
 	if (control == useMsgFlashEffectInp && eventType == DE_Click) {
 		// Save setting.
@@ -198,8 +186,7 @@ function notify(UWindowDialogControl control, byte eventType) {
 		// Apply setting.
 		client.nscHUD.bFlashMessages = useMsgFlashEffectInp.bChecked;
 	}
-	
-	
+		
 	// Toggle show player location in teamsay messages on/off.
 	if (control == showPlayerLocationInp && eventType == DE_Click) {
 		// Save setting.
@@ -208,6 +195,65 @@ function notify(UWindowDialogControl control, byte eventType) {
 		
 		// Apply setting.
 		client.nscHUD.bShowPlayerLocation = showPlayerLocationInp.bChecked;
+	}
+	
+	// Message HUD line count change
+	if (control == chatAreaLinesInp && eventType == DE_Change) {
+		client.nscHUD.chatMsgMaxCount = byte(chatAreaLinesInp.getValue());
+		client.nscHUD.bForceUpdate = true;	
+		client.saveExtendedHUDSettings();
+	}	
+	
+	// Message HUD font size change 
+	if (control == chatAreaFontInp && eventType == DE_Change) {
+		client.nscHUD.chatMsgSize = chatAreaFontInp.getValue();
+		client.nscHUD.bForceUpdate = true;
+		client.saveExtendedHUDSettings();
+	}
+	
+	// Chat messages default color changed
+	if (control == chatAreaColorInp && eventType == DE_Change) {
+		client.nscHUD.chatMsgColor = chatAreaColorInp.GetSelectedIndex();
+		client.saveExtendedHUDSettings();
+		checkHUDStyle();
+	}
+	
+	// Other messages line count change
+	if (control == otherAreaLinesInp && eventType == DE_Change) {
+		client.nscHUD.otherMsgMaxCount = byte(otherAreaLinesInp.getValue());
+		client.saveExtendedHUDSettings();
+	}
+	
+	// Other messages font size change 
+	if (control == otherAreaFontInp && eventType == DE_Change) {
+		client.nscHUD.otherMsgSize = otherAreaFontInp.getValue();
+		client.nscHUD.bForceUpdate = true;
+		client.saveExtendedHUDSettings();
+	}
+	
+	// Other messages default color changed
+	if (control == otherAreaColorInp && eventType == DE_Change) {
+		client.nscHUD.otherMsgColor = otherAreaColorInp.GetSelectedIndex();
+		client.saveExtendedHUDSettings();
+		checkHUDStyle();
+	}
+	
+	// Toggle usage of UT HUD color on/off.
+	if (control == useGameHUDColorInp && eventType == DE_Click) {
+		// Save setting.
+		client.nscHUD.useUTHUDColor = useGameHUDColorInp.bChecked;
+		client.saveExtendedHUDSettings();
+		checkHUDStyle();
+	}
+	
+	// Style changed by user
+	if (control == HUDStyleInp && eventType == DE_Change && !bCheckingHUDStyle) {
+		if(HUDStyleInp.GetSelectedIndex() < 2) {
+			client.setHUDStyle(HUDStyleInp.GetSelectedIndex());
+			chatAreaColorInp.setSelectedIndex(client.nscHUD.chatMsgColor);
+			otherAreaColorInp.setSelectedIndex(client.nscHUD.otherMsgColor);
+			useGameHUDColorInp.bChecked = client.nscHUD.useUTHUDColor;
+		}
 	}
 	
 	// Toggle private message sound on/off.
@@ -229,10 +275,22 @@ function notify(UWindowDialogControl control, byte eventType) {
 		// Save setting.
 		client.gc.set(client.SSTR_AutoSSMatch, string(autoSSMatchInp.bChecked));
 		client.gc.saveConfig();
-	}
-	
+	}	
 }
 
+
+
+/***************************************************************************************************
+ *
+ *  $DESCRIPTION  Compares current settings with the predefined schemes and adjusts style boxes
+ *                if required (prevents infinite recursion).
+ *
+ **************************************************************************************************/
+function checkHUDStyle() {
+	bCheckingHUDStyle = true;
+	HUDStyleInp.setSelectedIndex(client.checkHUDStyle());
+	bCheckingHUDStyle = false;
+}
 
 
 /***************************************************************************************************
@@ -242,6 +300,6 @@ function notify(UWindowDialogControl control, byte eventType) {
  **************************************************************************************************/
 defaultproperties {
 	panelIdentifier="clientsettings"
-	panelHeight=320
+	panelHeight=304
 }
 

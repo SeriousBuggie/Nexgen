@@ -39,8 +39,8 @@ function setContent() {
 	
 	addLabel(client.lng.keyBindsTxt, true, TA_Center);
 	divideRegionV(2);
-	divideRegionH(arrayCount(bindButton));
-	divideRegionH(arrayCount(bindButton));
+	divideRegionH(arrayCount(bindButton)+1);
+	divideRegionH(arrayCount(bindButton)+1);
 	
 	addLabel(client.lng.balanceBindTxt);
 	addLabel(client.lng.switchRedBindTxt);
@@ -51,6 +51,7 @@ function setContent() {
 	addLabel(client.lng.openMapVoteBindTxt);
 	addLabel(client.lng.openCPBindTxt);
 	addLabel(client.lng.pauseGameBindTxt);
+	skipRegion();
 	
 	for (index = 0; index < arrayCount(bindButton); index++) {
 		bindButton[index] = addRaisedButton();
